@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
-import ApperIcon from '@/components/ApperIcon';
+import React, { useState, useEffect } from 'react'
+import { motion, useMotionValue, useTransform } from 'framer-motion'
+import ApperIcon from '@/components/ApperIcon'
 import Loading from '@/components/ui/Loading';
 import Error from '@/components/ui/Error';
 import Empty from '@/components/ui/Empty';
