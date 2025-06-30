@@ -6,7 +6,7 @@ import ApperIcon from '@/components/ApperIcon';
 const BottomNavigation = ({ userRole, currentUser, onResetRole }) => {
   const location = useLocation();
 
-  const navItems = [
+const navItems = [
     { path: '/discover', icon: 'Heart', label: 'Discover' },
     { path: '/matches', icon: 'Users', label: 'Matches' },
     { path: '/messages', icon: 'MessageCircle', label: 'Messages' },
@@ -67,6 +67,19 @@ const BottomNavigation = ({ userRole, currentUser, onResetRole }) => {
               </NavLink>
             );
           })}
+</div>
+        
+        {/* Testing Role Switch Button */}
+        <div className="flex justify-center mt-2 pb-2">
+          <motion.button
+            onClick={onResetRole}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 border border-amber-400/30 rounded-full text-amber-300 text-xs font-medium hover:bg-amber-500/30 transition-all duration-200"
+          >
+            <ApperIcon name="Settings" size={14} />
+            Switch Role (Testing)
+          </motion.button>
         </div>
       </div>
     </motion.div>
