@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import { toast } from "react-toastify";
 import ApperIcon from "@/components/ApperIcon";
@@ -9,288 +9,299 @@ import Empty from "@/components/ui/Empty";
 import Loading from "@/components/ui/Loading";
 import { createSwipe, getSwipeableProfiles } from "@/services/api/swipeService";
 
-const Discover = ({ userRole, currentUser }) => {
-  const [profiles, setProfiles] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showMatch, setShowMatch] = useState(false);
-  const [matchedProfile, setMatchedProfile] = useState(null);
-  const [isSwipeDisabled, setIsSwipeDisabled] = useState(false);
+function Discover({ userRole, currentUser }) {
+  const [profiles, setProfiles] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showMatchModal, setShowMatchModal] = useState(false)
+  const [matchedProfile, setMatchedProfile] = useState(null)
+  const [swipeDirection, setSwipeDirection] = useState(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  
+  const isMountedRef = useRef(true)
+  const abortControllerRef = useRef(null)
 
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-20, 20]);
-  const opacity = useTransform(x, [-200, -50, 0, 50, 200], [0, 1, 1, 1, 0]);
+  const x = useMotionValue(0)
+  const rotate = useTransform(x, [-200, 200], [-30, 30])
+  const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0])
 
-  useEffect(() => {
-    let isMounted = true;
-    
-    const initializeProfiles = async () => {
-      if (!isMounted) return;
-      
-      if (currentUser?.Id && userRole) {
-        try {
-          await loadProfiles();
-        } catch (err) {
-          if (isMounted) {
-            setError('Failed to initialize profiles. Please refresh the page.');
-            setLoading(false);
-          }
-        }
-      } else {
-        if (isMounted) {
-          setError('User information is required to load profiles.');
-          setLoading(false);
-        }
+  // Safe state setter that checks if component is still mounted
+  const safeSetState = useCallback((setter) => {
+    return (...args) => {
+      if (isMountedRef.current) {
+        setter(...args)
       }
-    };
+    }
+  }, [])
 
-    initializeProfiles();
+  const safeSetProfiles = safeSetState(setProfiles)
+  const safeSetLoading = safeSetState(setLoading)
+  const safeSetError = safeSetState(setError)
 
-    return () => {
-      isMounted = false;
-    };
-  }, [currentUser?.Id, userRole]);
-
-  const loadProfiles = async () => {
-    if (!currentUser?.Id || !userRole) {
-      const errorMsg = 'Missing user information. Please refresh the page.';
-      setError(errorMsg);
-      setLoading(false);
-      return;
+  // Load profiles with comprehensive error handling
+  const loadProfiles = useCallback(async (isInitial = false) => {
+    if (!currentUser?.Id) {
+      const errorMsg = 'Missing user information. Please refresh the page.'
+      console.error(errorMsg)
+      safeSetError(errorMsg)
+      safeSetLoading(false)
+      return
     }
 
     try {
-      setLoading(true);
-      setError('');
+      if (isInitial) {
+        safeSetLoading(true)
+      }
+      safeSetError(null)
+      
+      // Cancel any existing request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      
+      abortControllerRef.current = new AbortController()
       
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), 10000)
-      );
+      )
       
-      const dataPromise = getSwipeableProfiles(currentUser.Id, userRole);
-      const data = await Promise.race([dataPromise, timeoutPromise]);
+      const dataPromise = getSwipeableProfiles(currentUser.Id, userRole, {
+        signal: abortControllerRef.current.signal
+      })
       
-      if (!data) {
-        throw new Error('No data received from server');
+      const data = await Promise.race([dataPromise, timeoutPromise])
+      
+      if (isMountedRef.current && !abortControllerRef.current.signal.aborted) {
+        safeSetProfiles(Array.isArray(data) ? data : [])
+        safeSetLoading(false)
+      }
+    } catch (error) {
+      console.error('Error loading profiles:', error)
+      
+      if (error.name === 'AbortError') {
+        return // Request was cancelled, don't show error
       }
       
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid response format - expected array');
+      if (isMountedRef.current) {
+        const errorMessage = error.message || 'Failed to load profiles. Please try again.'
+        safeSetError(errorMessage)
+        safeSetLoading(false)
+        
+        if (!isInitial) {
+          toast.error('Failed to load new profiles')
+        }
       }
-      
-      setProfiles(data);
-      setCurrentIndex(0);
-      
-      if (data.length === 0) {
-        toast.info('No new profiles available at the moment.');
+    }
+  }, [currentUser?.Id, userRole, safeSetProfiles, safeSetLoading, safeSetError])
+
+  // Initialize profiles when component mounts or user changes
+  useEffect(() => {
+    isMountedRef.current = true
+    loadProfiles(true)
+
+    return () => {
+      isMountedRef.current = false
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
       }
+    }
+  }, [loadProfiles])
+
+  // Handle swipe action with comprehensive error handling
+  const handleSwipe = useCallback(async (direction) => {
+    if (!profiles.length || !currentUser?.Id || isProcessing) {
+      return
+    }
+    
+    const currentProfile = profiles[0]
+    if (!currentProfile?.Id) {
+      console.error('Invalid profile data')
+      return
+    }
+    
+    try {
+      setIsProcessing(true)
+      safeSetError(null)
+      setSwipeDirection(direction)
       
-    } catch (err) {
-      const errorMessage = err?.message || 'Failed to load profiles. Please try again.';
-      setError(errorMessage);
-      console.error('Error loading profiles:', err);
+      const result = await createSwipe({
+        userId: currentUser.Id,
+        targetUserId: currentProfile.Id,
+        direction: direction,
+        userRole: userRole
+      })
+
+      if (!isMountedRef.current) return
+
+      // Remove the swiped profile
+      safeSetProfiles(prev => prev.slice(1))
+
+      // Check for match
+      if (result?.isMatch && direction === 'right') {
+        setMatchedProfile(currentProfile)
+        setShowMatchModal(true)
+      }
+
+      // Load more profiles if running low
+      if (profiles.length <= 2) {
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            loadProfiles(false)
+          }
+        }, 500)
+      }
+    } catch (error) {
+      console.error('Error creating swipe:', error)
       
-      if (err.message === 'Request timeout') {
-        toast.error('Connection timeout. Please check your internet connection.');
-      } else {
-        toast.error(errorMessage);
+      if (isMountedRef.current) {
+        const errorMessage = error.message || 'Failed to process swipe. Please try again.'
+        toast.error(errorMessage)
+        
+        // Reset swipe direction on error
+        setSwipeDirection(null)
       }
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSwipe = async (direction) => {
-    if (isSwipeDisabled || !profiles.length || currentIndex >= profiles.length) {
-      return;
-    }
-
-    setIsSwipeDisabled(true);
-    const currentProfile = profiles[currentIndex];
-    
-    if (!currentProfile?.Id) {
-      console.error('Invalid profile data for swipe');
-      setIsSwipeDisabled(false);
-      return;
-    }
-
-    try {
-      const result = await createSwipe({
-        swiperId: currentUser.Id,
-        swipedId: currentProfile.Id,
-        direction,
-        userRole
-      });
-
-      if (direction === 'right') {
-        if (result?.isMatch) {
-          setMatchedProfile(currentProfile);
-          setShowMatch(true);
-          toast.success('🎉 It\'s a match!');
-        } else {
-          toast.success('Profile liked!');
-        }
+      if (isMountedRef.current) {
+        setIsProcessing(false)
+        // Reset swipe direction after animation
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            setSwipeDirection(null)
+          }
+        }, 300)
       }
-
-      setTimeout(() => {
-        if (currentIndex < profiles.length - 1) {
-          setCurrentIndex(prev => prev + 1);
-        } else {
-          toast.info('No more profiles to show. Loading fresh ones...');
-          loadProfiles();
-        }
-        x.set(0);
-        setIsSwipeDisabled(false);
-      }, 300);
-
-    } catch (err) {
-      console.error('Swipe error:', err);
-      toast.error('Failed to process swipe. Please try again.');
-      setIsSwipeDisabled(false);
     }
-  };
+  }, [profiles, currentUser?.Id, userRole, isProcessing, loadProfiles, safeSetProfiles, safeSetError])
 
-  const handleDragEnd = (event, info) => {
-    const threshold = 100;
+  const handleDragEnd = useCallback((event, info) => {
+    const threshold = 100
     
-    if (info.offset.x > threshold) {
-      handleSwipe('right');
-    } else if (info.offset.x < -threshold) {
-      handleSwipe('left');
+    if (Math.abs(info.offset.x) > threshold && !isProcessing) {
+      const direction = info.offset.x > 0 ? 'right' : 'left'
+      handleSwipe(direction)
     } else {
-      x.set(0);
+      x.set(0)
     }
-  };
+  }, [handleSwipe, isProcessing, x])
 
-  if (loading) return <Loading />;
-  if (error) return <Error message={error} onRetry={loadProfiles} />;
-  if (profiles.length === 0 || currentIndex >= profiles.length) {
-    return (
-      <Empty 
-        title="No more profiles"
-        message="You've seen all available profiles! Check back later for more matches."
-        actionText="Refresh"
-        onAction={loadProfiles}
-      />
-    );
+  // Retry function for error recovery
+  const handleRetry = useCallback(() => {
+    loadProfiles(true)
+  }, [loadProfiles])
+
+  // Loading state
+  if (loading && profiles.length === 0) {
+    return <Loading />
   }
 
-  const currentProfile = profiles[currentIndex];
-  const remainingCount = profiles.length - currentIndex;
+  // Error state
+  if (error) {
+    return (
+      <Error 
+        message={error} 
+        onRetry={handleRetry}
+      />
+    )
+  }
+
+  // Empty state
+  if (!loading && profiles.length === 0) {
+    return (
+      <Empty 
+        message="No more profiles to show" 
+        onRefresh={handleRetry}
+      />
+    )
+  }
+
+  const currentProfile = profiles[0]
+  const remainingCount = profiles.length - 1
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 overflow-hidden">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold font-display gradient-text">
-              Discover
-            </h1>
-            <p className="text-gray-400 text-sm">
-              {remainingCount} {userRole === 'applicant' ? 'companies' : 'candidates'} remaining
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={loadProfiles}
-              className="p-3 bg-gray-800/50 hover:bg-gray-700/50 rounded-xl transition-colors"
-            >
-              <ApperIcon name="RotateCcw" size={20} className="text-gray-400" />
-            </button>
-          </div>
+      <div className="flex items-center justify-between p-4 bg-white shadow-sm">
+        <div className="flex items-center space-x-3">
+          <ApperIcon className="w-8 h-8" />
+          <h1 className="text-xl font-bold gradient-text">Discover</h1>
+        </div>
+        <div className="text-sm text-gray-600">
+          {remainingCount > 0 ? `${remainingCount} more` : 'Last one!'}
         </div>
       </div>
 
-      {/* Card Stack */}
-      <div className="flex-1 flex items-center justify-center px-4 pb-8">
+      {/* Main Content */}
+      <div className="flex-1 p-4 flex items-center justify-center">
         <div className="relative w-full max-w-sm">
-          {/* Next cards (for depth) */}
-          {profiles.slice(currentIndex + 1, currentIndex + 3).map((profile, index) => (
-            <div
-              key={profile.Id}
-              className="absolute inset-0 swipe-card rounded-3xl"
-              style={{
-                transform: `scale(${1 - (index + 1) * 0.05}) translateY(${(index + 1) * 10}px)`,
-                opacity: 1 - (index + 1) * 0.3,
-                zIndex: -(index + 1)
-              }}
-            />
-          ))}
+          {/* Current Profile Card */}
+          {currentProfile && (
+            <motion.div
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              style={{ x, rotate, opacity }}
+              onDragEnd={handleDragEnd}
+              className="relative z-10"
+              animate={swipeDirection ? {
+                x: swipeDirection === 'right' ? 300 : -300,
+                opacity: 0,
+                transition: { duration: 0.3 }
+              } : {}}
+            >
+              <SwipeCard 
+                profile={currentProfile} 
+                userRole={userRole}
+              />
+            </motion.div>
+          )}
 
-          {/* Current card */}
-          <motion.div
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            onDragEnd={handleDragEnd}
-            style={{ x, rotate, opacity }}
-            className="relative z-10 cursor-grab active:cursor-grabbing"
-            whileDrag={{ scale: 1.05 }}
-            animate={{ scale: isSwipeDisabled ? 0.95 : 1 }}
-          >
-            <SwipeCard profile={currentProfile} userRole={userRole} />
-            
-            {/* Swipe indicators */}
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-accent-500/20 rounded-3xl border-4 border-accent-500"
-              style={{ opacity: useTransform(x, [50, 200], [0, 1]) }}
-            >
-              <div className="bg-accent-500 text-white px-6 py-3 rounded-full font-bold text-lg">
-                LIKE
-              </div>
-            </motion.div>
-            
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-red-500/20 rounded-3xl border-4 border-red-500"
-              style={{ opacity: useTransform(x, [-200, -50], [1, 0]) }}
-            >
-              <div className="bg-red-500 text-white px-6 py-3 rounded-full font-bold text-lg">
-                PASS
-              </div>
-            </motion.div>
-          </motion.div>
+          {/* Next Profile Card (Preview) */}
+          {profiles[1] && (
+            <div className="absolute inset-0 z-0 transform scale-95 opacity-50">
+              <SwipeCard 
+                profile={profiles[1]} 
+                userRole={userRole}
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="px-6 pb-8">
-        <div className="flex justify-center gap-6">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => handleSwipe('left')}
-            disabled={isSwipeDisabled}
-            className="w-16 h-16 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-full flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ApperIcon name="X" size={24} className="text-white" />
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => handleSwipe('right')}
-            disabled={isSwipeDisabled}
-            className="w-16 h-16 bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 rounded-full flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ApperIcon name="Heart" size={24} className="text-white" />
-          </motion.button>
-        </div>
+      <div className="flex justify-center space-x-8 p-6 bg-white">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => handleSwipe('left')}
+          disabled={!currentProfile || isProcessing}
+          className="btn-secondary w-14 h-14 rounded-full flex items-center justify-center disabled:opacity-50"
+        >
+          <ApperIcon name="X" className="w-6 h-6" />
+        </motion.button>
+        
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => handleSwipe('right')}
+          disabled={!currentProfile || isProcessing}
+          className="btn-primary w-14 h-14 rounded-full flex items-center justify-center disabled:opacity-50"
+        >
+          <ApperIcon name="Heart" className="w-6 h-6" />
+        </motion.button>
       </div>
 
       {/* Match Modal */}
-      {showMatch && matchedProfile && (
+      {showMatchModal && matchedProfile && (
         <MatchModal
           profile={matchedProfile}
           userRole={userRole}
           onClose={() => {
-            setShowMatch(false);
-            setMatchedProfile(null);
+            setShowMatchModal(false)
+            setMatchedProfile(null)
           }}
         />
       )}
     </div>
-  );
-};
+  )
+}
 
-export default Discover;
+export default Discover

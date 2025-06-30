@@ -1,111 +1,126 @@
-// Service file - no React imports needed
 import { matches } from "@/services/mockData/matches.json";
 import { users } from "@/services/mockData/users.json";
 import { swipes } from "@/services/mockData/swipes.json";
 
-const swipeData = [...swipes];
-const matchData = [...matches];
-const userData = [...users];
-
+// Simulated delay for realistic API behavior
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export async function getSwipeableProfiles(userId, userRole) {
-  // Validate input parameters
-  if (!userId || !userRole) {
-    throw new Error('User ID and role are required');
-  }
+// Store data in memory (in a real app, this would be a database)
+const swipeData = [...swipes]
+const matchData = [...matches]
+const userData = [...users]
 
+export async function getSwipeableProfiles(userId, userRole, options = {}) {
   try {
-    await delay(500);
-    
-    // Get profiles that haven't been swiped on
-// Get profiles that haven't been swiped on
-    const swipedProfileIds = swipeData
-      .filter(swipe => swipe?.swiperId === userId)
-      .map(swipe => swipe?.swipedId)
-      .filter(Id => Id != null);
-// Filter profiles based on role
-    const availableProfiles = userData
-      .filter(user => user?.Id !== userId) // Exclude self
-      .filter(user => !swipedProfileIds.includes(user?.Id))
-.filter(user => {
-        if (!user?.type) return false; // Skip users without type
-        
-        if (userRole === 'applicant') {
-          return user.type === 'company';
-        } else {
-          return user.type === 'applicant';
-        }
-      });
-
-    return availableProfiles || [];
-  } catch (error) {
-    console.error('Error fetching swipeable profiles:', error);
-    throw new Error('Failed to load profiles. Please try again.');
-  }
-}
-export async function createSwipe({ fromUserId, toUserId, direction }) {
-  // Validate input parameters
-  if (!fromUserId || !toUserId || !direction) {
-    throw new Error('From user ID, to user ID, and direction are required');
-  }
-
-  if (!['left', 'right'].includes(direction)) {
-    throw new Error('Direction must be either "left" or "right"');
-  }
-  try {
-    await delay(300);
-
-const swipe = {
-      id: Date.now(),
-      swiperId: fromUserId,
-      swipedId: toUserId,
-      direction,
-      timestamp: new Date().toISOString()
-    };
-
-    swipeData.push(swipe);
-
-    // Check if it's a match (both users swiped right on each other)
-    let isMatch = false;
-if (direction === 'right') {
-      const reciprocalSwipe = swipeData.find(s => 
-        s?.swiperId === toUserId && 
-        s?.swipedId === fromUserId && 
-        s?.direction === 'right'
-      );
-
-if (reciprocalSwipe) {
-        isMatch = true;
-        const match = {
-          id: Date.now() + 1,
-          user1Id: fromUserId,
-          user2Id: toUserId,
-          timestamp: new Date().toISOString()
-        };
-        matchData.push(match);
-      }
+    // Support for abort signal
+    if (options.signal?.aborted) {
+      throw new Error('Request aborted')
     }
 
-    return { swipe, isMatch };
+    await delay(800)
+
+    // Validate inputs
+    if (!userId || !userRole) {
+      throw new Error('Missing required parameters: userId and userRole')
+    }
+
+    // Check if request was aborted during delay
+    if (options.signal?.aborted) {
+      throw new Error('Request aborted')
+    }
+
+    // Get user's existing swipes
+    const userSwipes = swipeData.filter(swipe => swipe?.userId === userId)
+    const swipedUserIds = userSwipes.map(swipe => swipe?.targetUserId).filter(Boolean)
+
+    // Filter profiles based on user role
+    const targetRole = userRole === 'company' ? 'candidate' : 'company'
+    const availableProfiles = userData.filter(user => 
+      user && 
+      user.role === targetRole && 
+      user.Id !== userId &&
+      !swipedUserIds.includes(user.Id) &&
+      user.Id // Ensure user has valid ID
+    )
+
+    // Shuffle profiles for variety
+    const shuffled = availableProfiles.sort(() => Math.random() - 0.5)
+    
+    return shuffled.slice(0, 10) // Return up to 10 profiles
   } catch (error) {
-    console.error('Error creating swipe:', error);
-    throw new Error('Failed to process swipe. Please try again.');
+    console.error('Error in getSwipeableProfiles:', error)
+    throw error
+  }
+}
+
+export async function createSwipe(swipeRequest) {
+  try {
+    await delay(500)
+
+    // Validate required fields
+    if (!swipeRequest?.userId || !swipeRequest?.targetUserId || !swipeRequest?.direction) {
+      throw new Error('Missing required swipe data')
+    }
+
+    const newSwipe = {
+      id: Date.now(),
+      userId: swipeRequest.userId,
+      targetUserId: swipeRequest.targetUserId,
+      direction: swipeRequest.direction,
+      userRole: swipeRequest.userRole,
+      timestamp: new Date().toISOString()
+    }
+
+    // Add to swipes array
+    swipeData.push(newSwipe)
+
+    // Check for match (both users swiped right on each other)
+    const targetSwipe = swipeData.find(swipe => 
+      swipe?.userId === newSwipe.targetUserId &&
+      swipe?.targetUserId === newSwipe.userId &&
+      swipe?.direction === 'right'
+    )
+
+    let isMatch = false
+    if (newSwipe.direction === 'right' && targetSwipe) {
+      isMatch = true
+      
+      // Create match record
+      const newMatch = {
+        id: Date.now(),
+        user1Id: newSwipe.userId,
+        user2Id: newSwipe.targetUserId,
+        timestamp: new Date().toISOString(),
+        status: 'active'
+      }
+
+      matchData.push(newMatch)
+    }
+
+    return {
+      success: true,
+      isMatch,
+      swipe: newSwipe
+    }
+  } catch (error) {
+    console.error('Error in createSwipe:', error)
+    throw error
   }
 }
 
 export async function getSwipes(userId) {
-  if (!userId) {
-    throw new Error('User ID is required');
-  }
-
-try {
-    await delay(200);
-    return swipeData.filter(swipe => swipe?.swiperId === userId) || [];
+  try {
+    await delay(300)
+    
+    if (!userId) {
+      throw new Error('Missing userId parameter')
+    }
+    
+    return swipeData.filter(swipe => swipe?.userId === userId)
   } catch (error) {
-    console.error('Error fetching swipes:', error);
-    throw new Error('Failed to load swipes. Please try again.');
+console.error('Error in getSwipes:', error)
+    throw error
   }
 }
