@@ -1,0 +1,25 @@
+{
+  "matches": [
+    {
+      "Id": 1,
+      "users": [1, 2],
+      "createdAt": "2024-01-15T11:15:00Z",
+      "lastMessage": null,
+      "unreadCount": 0
+    },
+    {
+      "Id": 2, 
+      "users": [3, 4],
+      "createdAt": "2024-01-15T15:45:00Z",
+      "lastMessage": null,
+      "unreadCount": 2
+    },
+    {
+      "Id": 3,
+      "users": [5, 8],
+      "createdAt": "2024-01-16T12:20:00Z", 
+      "lastMessage": null,
+      "unreadCount": 1
+    }
+  ]
+}

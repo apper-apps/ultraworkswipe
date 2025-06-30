@@ -1,0 +1,52 @@
+{
+  "messages": [
+    {
+      "Id": 1,
+      "matchId": 1,
+      "senderId": 1,
+      "content": "Hey! Excited to learn more about the opportunities at InnovateTech!",
+      "timestamp": "2024-01-15T12:00:00Z",
+      "read": true
+    },
+    {
+      "Id": 2,
+      "matchId": 1,
+      "senderId": 2,
+      "content": "Hi Alex! Great to connect. We'd love to chat about our open positions. Are you available for a quick call this week?",
+      "timestamp": "2024-01-15T12:30:00Z", 
+      "read": true
+    },
+    {
+      "Id": 3,
+      "matchId": 1,
+      "senderId": 1,
+      "content": "Absolutely! I'm free Wednesday or Thursday afternoon. What works best for you?",
+      "timestamp": "2024-01-15T13:15:00Z",
+      "read": false
+    },
+    {
+      "Id": 4,
+      "matchId": 2,
+      "senderId": 3,
+      "content": "Hi there! I'm really interested in GreenTech's mission. Would love to discuss potential design roles!",
+      "timestamp": "2024-01-15T16:20:00Z",
+      "read": false
+    },
+    {
+      "Id": 5,
+      "matchId": 2, 
+      "senderId": 4,
+      "content": "Hi Sarah! We're actually looking for a senior UX designer right now. Your portfolio looks amazing! Let's schedule a chat soon.",
+      "timestamp": "2024-01-15T17:45:00Z",
+      "read": false
+    },
+    {
+      "Id": 6,
+      "matchId": 3,
+      "senderId": 8,
+      "content": "Hey Marcus! We saw your ML background and think you'd be a great fit for our AI robotics team. Interested in learning more?",
+      "timestamp": "2024-01-16T14:10:00Z",
+      "read": false
+    }
+  ]
+}

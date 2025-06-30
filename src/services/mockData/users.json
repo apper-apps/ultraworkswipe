@@ -1,0 +1,145 @@
+{
+  "users": [
+    {
+      "Id": 1,
+      "type": "applicant",
+      "name": "Alex Johnson",
+      "email": "alex@email.com", 
+      "profile": {
+        "bio": "Passionate full-stack developer with 3 years of experience building scalable web applications. Love working with React, Node.js, and exploring new technologies.",
+        "title": "Full Stack Developer",
+        "skills": ["JavaScript", "React", "Node.js", "Python", "AWS", "MongoDB"],
+        "location": "San Francisco, CA",
+        "experience": [
+          {
+            "title": "Software Engineer",
+            "company": "TechStart Inc",
+            "duration": "2022 - Present"
+          },
+          {
+            "title": "Junior Developer", 
+            "company": "WebDev Co",
+            "duration": "2021 - 2022"
+          }
+        ]
+      }
+    },
+    {
+      "Id": 2,
+      "type": "company",
+      "name": "InnovateTech Solutions",
+      "email": "hr@innovatetech.com",
+      "profile": {
+        "bio": "We're revolutionizing the fintech space with cutting-edge solutions. Join our team of passionate developers and shape the future of finance.",
+        "companyInfo": {
+          "name": "InnovateTech Solutions",
+          "industry": "Fintech",
+          "size": "50-100 employees"
+        },
+        "location": "New York, NY"
+      }
+    },
+    {
+      "Id": 3,
+      "type": "applicant", 
+      "name": "Sarah Chen",
+      "email": "sarah@email.com",
+      "profile": {
+        "bio": "UX/UI Designer with a passion for creating intuitive and beautiful user experiences. 4 years of experience in both startups and enterprises.",
+        "title": "UX/UI Designer",
+        "skills": ["Figma", "Adobe XD", "Sketch", "Prototyping", "User Research", "Design Systems"],
+        "location": "Los Angeles, CA",
+        "experience": [
+          {
+            "title": "Senior UX Designer",
+            "company": "DesignHub",
+            "duration": "2021 - Present"
+          }
+        ]
+      }
+    },
+    {
+      "Id": 4,
+      "type": "company",
+      "name": "GreenTech Innovations",
+      "email": "careers@greentech.com", 
+      "profile": {
+        "bio": "Leading the green revolution through innovative technology solutions. We're building the future of sustainable tech and looking for passionate individuals to join our mission.",
+        "companyInfo": {
+          "name": "GreenTech Innovations",
+          "industry": "Clean Technology",
+          "size": "100-200 employees"
+        },
+        "location": "Austin, TX"
+      }
+    },
+    {
+      "Id": 5,
+      "type": "applicant",
+      "name": "Marcus Williams", 
+      "email": "marcus@email.com",
+      "profile": {
+        "bio": "Data scientist and machine learning engineer with expertise in Python, TensorFlow, and cloud platforms. Love turning data into actionable insights.",
+        "title": "Data Scientist",
+        "skills": ["Python", "TensorFlow", "PyTorch", "SQL", "AWS", "Tableau"],
+        "location": "Seattle, WA",
+        "experience": [
+          {
+            "title": "ML Engineer",
+            "company": "DataCorp",
+            "duration": "2020 - Present"
+          }
+        ]
+      }
+    },
+    {
+      "Id": 6,
+      "type": "company",
+      "name": "CloudFirst Technologies",
+      "email": "talent@cloudfirst.com",
+      "profile": {
+        "bio": "Cloud-native solutions provider helping enterprises modernize their infrastructure. We offer flexible work arrangements and cutting-edge projects.",
+        "companyInfo": {
+          "name": "CloudFirst Technologies", 
+          "industry": "Cloud Computing",
+          "size": "200-500 employees"
+        },
+        "location": "Denver, CO"
+      }
+    },
+    {
+      "Id": 7,
+      "type": "applicant",
+      "name": "Emma Rodriguez",
+      "email": "emma@email.com",
+      "profile": {
+        "bio": "Product manager with a track record of launching successful B2B and B2C products. Passionate about user-centric design and agile methodologies.",
+        "title": "Product Manager",
+        "skills": ["Product Strategy", "Agile", "Scrum", "Analytics", "User Research", "Roadmapping"],
+        "location": "Chicago, IL",
+        "experience": [
+          {
+            "title": "Senior Product Manager",
+            "company": "ProductLab", 
+            "duration": "2019 - Present"
+          }
+        ]
+      }
+    },
+    {
+      "Id": 8,
+      "type": "company",
+      "name": "NextGen Robotics",
+      "email": "jobs@nextgenrobotics.com",
+      "profile": {
+        "bio": "Pioneering the future of robotics and automation. Join our team of innovators working on cutting-edge AI and robotics solutions for various industries.",
+        "companyInfo": {
+          "name": "NextGen Robotics",
+          "industry": "Robotics & AI",
+          "size": "30-50 employees"
+        },
+        "location": "Boston, MA"
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "swipes": [
+    {
+      "Id": 1,
+      "fromUserId": 1,
+      "toUserId": 2,
+      "direction": "right",
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "Id": 2,
+      "fromUserId": 2,
+      "toUserId": 1,
+      "direction": "right", 
+      "timestamp": "2024-01-15T11:15:00Z"
+    },
+    {
+      "Id": 3,
+      "fromUserId": 3,
+      "toUserId": 4,
+      "direction": "right",
+      "timestamp": "2024-01-15T14:20:00Z"
+    },
+    {
+      "Id": 4,
+      "fromUserId": 4,
+      "toUserId": 3,
+      "direction": "right",
+      "timestamp": "2024-01-15T15:45:00Z"
+    },
+    {
+      "Id": 5,
+      "fromUserId": 5,
+      "toUserId": 6,
+      "direction": "left",
+      "timestamp": "2024-01-16T09:10:00Z"
+    },
+    {
+      "Id": 6,
+      "fromUserId": 7,
+      "toUserId": 8,
+      "direction": "right",
+      "timestamp": "2024-01-16T16:30:00Z"
+    }
+  ]
+}
