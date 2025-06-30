@@ -1,6 +1,8 @@
-import { users } from '@/services/mockData/users.json'
-import { swipes } from '@/services/mockData/swipes.json'
-import { matches } from '@/services/mockData/matches.json'
+import React from "react";
+import Error from "@/components/ui/Error";
+import { matches } from "@/services/mockData/matches.json";
+import { users } from "@/services/mockData/users.json";
+import { swipes } from "@/services/mockData/swipes.json";
 
 const swipeData = [...swipes];
 const matchData = [...matches];
@@ -20,21 +22,22 @@ export async function getSwipeableProfiles(userId, userRole) {
     await delay(500);
     
     // Get profiles that haven't been swiped on
+// Get profiles that haven't been swiped on
     const swipedProfileIds = swipeData
       .filter(swipe => swipe?.swiperId === userId)
       .map(swipe => swipe?.swipedId)
-      .filter(id => id != null);
+      .filter(Id => Id != null);
 // Filter profiles based on role
     const availableProfiles = userData
-      .filter(user => user?.id !== userId) // Exclude self
-      .filter(user => !swipedProfileIds.includes(user?.id))
-      .filter(user => {
+      .filter(user => user?.Id !== userId) // Exclude self
+      .filter(user => !swipedProfileIds.includes(user?.Id))
+.filter(user => {
         if (!user?.type) return false; // Skip users without type
         
-        if (userRole === 'individual') {
+        if (userRole === 'applicant') {
           return user.type === 'company';
         } else {
-          return user.type === 'individual';
+          return user.type === 'applicant';
         }
       });
 
@@ -44,23 +47,22 @@ export async function getSwipeableProfiles(userId, userRole) {
     throw new Error('Failed to load profiles. Please try again.');
   }
 }
-export async function createSwipe(swiperId, swipedId, direction) {
+export async function createSwipe({ fromUserId, toUserId, direction }) {
   // Validate input parameters
-  if (!swiperId || !swipedId || !direction) {
-    throw new Error('Swiper ID, swiped ID, and direction are required');
+  if (!fromUserId || !toUserId || !direction) {
+    throw new Error('From user ID, to user ID, and direction are required');
   }
 
   if (!['left', 'right'].includes(direction)) {
     throw new Error('Direction must be either "left" or "right"');
   }
-
   try {
     await delay(300);
 
-    const swipe = {
+const swipe = {
       id: Date.now(),
-      swiperId,
-      swipedId,
+      swiperId: fromUserId,
+      swipedId: toUserId,
       direction,
       timestamp: new Date().toISOString()
     };
@@ -71,17 +73,17 @@ export async function createSwipe(swiperId, swipedId, direction) {
     let isMatch = false;
 if (direction === 'right') {
       const reciprocalSwipe = swipeData.find(s => 
-        s?.swiperId === swipedId && 
-        s?.swipedId === swiperId && 
+        s?.swiperId === toUserId && 
+        s?.swipedId === fromUserId && 
         s?.direction === 'right'
       );
 
-      if (reciprocalSwipe) {
+if (reciprocalSwipe) {
         isMatch = true;
         const match = {
           id: Date.now() + 1,
-          user1Id: swiperId,
-          user2Id: swipedId,
+          user1Id: fromUserId,
+          user2Id: toUserId,
           timestamp: new Date().toISOString()
         };
         matchData.push(match);
@@ -100,12 +102,11 @@ export async function getSwipes(userId) {
     throw new Error('User ID is required');
   }
 
-  try {
+try {
     await delay(200);
     return swipeData.filter(swipe => swipe?.swiperId === userId) || [];
   } catch (error) {
     console.error('Error fetching swipes:', error);
     throw new Error('Failed to load swipes. Please try again.');
   }
-  return swipeData.filter(s => s.fromUserId === userId).map(s => ({ ...s }));
-};
+}
