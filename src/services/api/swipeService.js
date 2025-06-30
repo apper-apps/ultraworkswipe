@@ -1,5 +1,4 @@
-import React from "react";
-import Error from "@/components/ui/Error";
+// Service file - no React imports needed
 import { matches } from "@/services/mockData/matches.json";
 import { users } from "@/services/mockData/users.json";
 import { swipes } from "@/services/mockData/swipes.json";

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react'
-import { motion, useMotionValue, useTransform } from 'framer-motion'
-import ApperIcon from '@/components/ApperIcon'
-import Loading from '@/components/ui/Loading'
-import Error from '@/components/ui/Error'
-import Empty from '@/components/ui/Empty'
-import SwipeCard from '@/components/organisms/SwipeCard'
-import MatchModal from '@/components/organisms/MatchModal'
-import { getSwipeableProfiles, createSwipe } from '@/services/api/swipeService'
-import { toast } from 'react-toastify'
+import React, { useEffect, useState } from "react";
+import { motion, useMotionValue, useTransform } from "framer-motion";
+import { toast } from "react-toastify";
+import ApperIcon from "@/components/ApperIcon";
+import SwipeCard from "@/components/organisms/SwipeCard";
+import MatchModal from "@/components/organisms/MatchModal";
+import Error from "@/components/ui/Error";
+import Empty from "@/components/ui/Empty";
+import Loading from "@/components/ui/Loading";
+import { createSwipe, getSwipeableProfiles } from "@/services/api/swipeService";
+
 const Discover = ({ userRole, currentUser }) => {
   const [profiles, setProfiles] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -21,20 +22,40 @@ const Discover = ({ userRole, currentUser }) => {
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
   const opacity = useTransform(x, [-200, -50, 0, 50, 200], [0, 1, 1, 1, 0]);
 
-useEffect(() => {
-    // Only load profiles if we have valid user data
-    if (currentUser?.Id && userRole) {
-      loadProfiles();
-    } else {
-      setError('User information is required to load profiles.');
-      setLoading(false);
-    }
-  }, [currentUser, userRole]); // Fixed: Added proper dependencies
+  useEffect(() => {
+    let isMounted = true;
+    
+    const initializeProfiles = async () => {
+      if (!isMounted) return;
+      
+      if (currentUser?.Id && userRole) {
+        try {
+          await loadProfiles();
+        } catch (err) {
+          if (isMounted) {
+            setError('Failed to initialize profiles. Please refresh the page.');
+            setLoading(false);
+          }
+        }
+      } else {
+        if (isMounted) {
+          setError('User information is required to load profiles.');
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeProfiles();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser?.Id, userRole]);
 
   const loadProfiles = async () => {
-    // Defensive check before async operation
     if (!currentUser?.Id || !userRole) {
-      setError('Missing user information. Please refresh the page.');
+      const errorMsg = 'Missing user information. Please refresh the page.';
+      setError(errorMsg);
       setLoading(false);
       return;
     }
@@ -42,42 +63,68 @@ useEffect(() => {
     try {
       setLoading(true);
       setError('');
-      const data = await getSwipeableProfiles(currentUser.Id, userRole);
       
-      // Validate response data
-      if (!data || !Array.isArray(data)) {
-        throw new Error('Invalid response format');
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+      
+      const dataPromise = getSwipeableProfiles(currentUser.Id, userRole);
+      const data = await Promise.race([dataPromise, timeoutPromise]);
+      
+      if (!data) {
+        throw new Error('No data received from server');
+      }
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid response format - expected array');
       }
       
       setProfiles(data);
       setCurrentIndex(0);
+      
+      if (data.length === 0) {
+        toast.info('No new profiles available at the moment.');
+      }
+      
     } catch (err) {
       const errorMessage = err?.message || 'Failed to load profiles. Please try again.';
       setError(errorMessage);
       console.error('Error loading profiles:', err);
       
-      // Show user-friendly toast notification
-      toast.error(errorMessage);
+      if (err.message === 'Request timeout') {
+        toast.error('Connection timeout. Please check your internet connection.');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleSwipe = async (direction) => {
-    if (isSwipeDisabled || currentIndex >= profiles.length) return;
+    if (isSwipeDisabled || !profiles.length || currentIndex >= profiles.length) {
+      return;
+    }
 
     setIsSwipeDisabled(true);
     const currentProfile = profiles[currentIndex];
+    
+    if (!currentProfile?.Id) {
+      console.error('Invalid profile data for swipe');
+      setIsSwipeDisabled(false);
+      return;
+    }
 
     try {
       const result = await createSwipe({
-        fromUserId: currentUser.Id,
-        toUserId: currentProfile.Id,
-        direction: direction
+        swiperId: currentUser.Id,
+        swipedId: currentProfile.Id,
+        direction,
+        userRole
       });
 
       if (direction === 'right') {
-        if (result.isMatch) {
+        if (result?.isMatch) {
           setMatchedProfile(currentProfile);
           setShowMatch(true);
           toast.success('🎉 It\'s a match!');
@@ -87,13 +134,19 @@ useEffect(() => {
       }
 
       setTimeout(() => {
-        setCurrentIndex(prev => prev + 1);
+        if (currentIndex < profiles.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+        } else {
+          toast.info('No more profiles to show. Loading fresh ones...');
+          loadProfiles();
+        }
         x.set(0);
         setIsSwipeDisabled(false);
       }, 300);
 
     } catch (err) {
-      toast.error('Failed to process swipe');
+      console.error('Swipe error:', err);
+      toast.error('Failed to process swipe. Please try again.');
       setIsSwipeDisabled(false);
     }
   };
