@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { motion, useMotionValue, useTransform } from 'framer-motion'
 import ApperIcon from '@/components/ApperIcon'
-import Loading from '@/components/ui/Loading';
-import Error from '@/components/ui/Error';
-import Empty from '@/components/ui/Empty';
-import SwipeCard from '@/components/organisms/SwipeCard';
-import MatchModal from '@/components/organisms/MatchModal';
-import { getSwipeableProfiles, createSwipe } from '@/services/api/swipeService';
-import { toast } from 'react-toastify';
-
+import Loading from '@/components/ui/Loading'
+import Error from '@/components/ui/Error'
+import Empty from '@/components/ui/Empty'
+import SwipeCard from '@/components/organisms/SwipeCard'
+import MatchModal from '@/components/organisms/MatchModal'
+import { getSwipeableProfiles, createSwipe } from '@/services/api/swipeService'
+import { toast } from 'react-toastify'
 const Discover = ({ userRole, currentUser }) => {
   const [profiles, setProfiles] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -22,19 +21,43 @@ const Discover = ({ userRole, currentUser }) => {
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
   const opacity = useTransform(x, [-200, -50, 0, 50, 200], [0, 1, 1, 1, 0]);
 
-  useEffect(() => {
-    loadProfiles();
-  }, []);
+useEffect(() => {
+    // Only load profiles if we have valid user data
+    if (currentUser?.Id && userRole) {
+      loadProfiles();
+    } else {
+      setError('User information is required to load profiles.');
+      setLoading(false);
+    }
+  }, [currentUser, userRole]); // Fixed: Added proper dependencies
 
   const loadProfiles = async () => {
+    // Defensive check before async operation
+    if (!currentUser?.Id || !userRole) {
+      setError('Missing user information. Please refresh the page.');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
       const data = await getSwipeableProfiles(currentUser.Id, userRole);
+      
+      // Validate response data
+      if (!data || !Array.isArray(data)) {
+        throw new Error('Invalid response format');
+      }
+      
       setProfiles(data);
       setCurrentIndex(0);
     } catch (err) {
-      setError('Failed to load profiles. Please try again.');
+      const errorMessage = err?.message || 'Failed to load profiles. Please try again.';
+      setError(errorMessage);
+      console.error('Error loading profiles:', err);
+      
+      // Show user-friendly toast notification
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
